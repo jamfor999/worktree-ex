@@ -30,7 +30,7 @@ function M.get_git_root()
 end
 
 -- Parse worktree list output
-local function parse_worktree_list(output)
+local function parse_worktree_list(output, git_common_dir)
   local worktrees = {}
 
   for line in output:gmatch('[^\r\n]+') do
@@ -45,7 +45,14 @@ local function parse_worktree_list(output)
       -- Remove any trailing annotations like (bare) or (detached)
       path = path:gsub('%s*%([^)]+%)$', '')
 
-      -- Resolve to absolute path to handle .. and .
+      -- If path is relative, resolve it relative to the git common dir
+      if not path:match('^/') and not path:match('^~') then
+        -- Relative path - resolve it relative to git dir parent
+        local git_parent = vim.fn.fnamemodify(git_common_dir, ':h')
+        path = git_parent .. '/' .. path
+      end
+
+      -- Now resolve to clean absolute path
       path = vim.fn.fnamemodify(path, ':p'):gsub('/$', '')
 
       table.insert(worktrees, {
@@ -84,12 +91,22 @@ function M.list_worktrees()
     return {}
   end
 
+  -- Get the git common directory to resolve relative paths
+  local git_dir_output = exec_git({ 'rev-parse', '--git-common-dir' })
+  local git_common_dir = git_dir_output and vim.trim(git_dir_output) or vim.fn.getcwd()
+
+  -- Make git_common_dir absolute if it's relative
+  if not git_common_dir:match('^/') then
+    git_common_dir = vim.fn.getcwd() .. '/' .. git_common_dir
+  end
+  git_common_dir = vim.fn.fnamemodify(git_common_dir, ':p'):gsub('/$', '')
+
   local output = exec_git({ 'worktree', 'list', '--porcelain' })
   if not output then
     return {}
   end
 
-  return parse_worktree_list(output)
+  return parse_worktree_list(output, git_common_dir)
 end
 
 -- Get the current worktree
