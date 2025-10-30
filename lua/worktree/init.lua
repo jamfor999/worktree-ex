@@ -117,12 +117,18 @@ end
 
 -- Remap buffer paths from old worktree to new worktree
 function M._remap_buffers(old_path, new_path)
+  print("=== REMAP BUFFERS DEBUG ===")
+  print("Old path: " .. old_path)
+  print("New path: " .. new_path)
+  
   -- First, capture which buffers are visible in which windows
   local window_buffers = {}
   for _, winnr in ipairs(vim.api.nvim_list_wins()) do
     if vim.api.nvim_win_is_valid(winnr) then
       local bufnr = vim.api.nvim_win_get_buf(winnr)
       local buf_name = vim.api.nvim_buf_get_name(bufnr)
+      
+      print(string.format("Window %d -> Buffer %d: %s", winnr, bufnr, buf_name))
       
       -- Only track windows showing buffers from the old worktree
       if buf_name:sub(1, #old_path) == old_path then
@@ -131,6 +137,9 @@ function M._remap_buffers(old_path, new_path)
           old_path = buf_name,
           rel_path = buf_name:sub(#old_path + 1)
         }
+        print(string.format("  -> TRACKED: rel_path = %s", buf_name:sub(#old_path + 1)))
+      else
+        print("  -> NOT in old worktree, skipping")
       end
     end
   end
@@ -138,6 +147,7 @@ function M._remap_buffers(old_path, new_path)
   local buffers = vim.api.nvim_list_bufs()
   local buffer_mapping = {} -- Map old buffer to new buffer
 
+  print("\n=== REMAPPING BUFFERS ===")
   for _, bufnr in ipairs(buffers) do
     if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
       local buf_name = vim.api.nvim_buf_get_name(bufnr)
@@ -150,8 +160,12 @@ function M._remap_buffers(old_path, new_path)
         -- Create new path in the new worktree
         local new_buf_path = new_path .. rel_path
 
+        print(string.format("Buffer %d: %s", bufnr, buf_name))
+        print(string.format("  -> New path: %s", new_buf_path))
+        
         -- Check if the file exists in the new worktree
         if vim.fn.filereadable(new_buf_path) == 1 then
+          print("  -> File exists, remapping buffer")
           -- Update buffer to point to new path
           vim.api.nvim_buf_set_name(bufnr, new_buf_path)
 
@@ -162,35 +176,54 @@ function M._remap_buffers(old_path, new_path)
           
           -- Track the mapping for window restoration
           buffer_mapping[buf_name] = bufnr
+          print(string.format("  -> Mapped %s -> bufnr %d", buf_name, bufnr))
         else
+          print("  -> File doesn't exist, deleting buffer")
           -- File doesn't exist in new worktree, close the buffer
           local buf_modified = vim.api.nvim_buf_get_option(bufnr, 'modified')
           if not buf_modified then
             vim.api.nvim_buf_delete(bufnr, { force = false })
+            print("  -> Buffer deleted")
+          else
+            print("  -> Buffer modified, keeping it")
           end
         end
       end
     end
   end
 
+  print("\n=== RESTORING WINDOWS ===")
   -- Restore buffers in windows
   for winnr, info in pairs(window_buffers) do
+    print(string.format("Window %d (was showing %s)", winnr, info.old_path))
     if vim.api.nvim_win_is_valid(winnr) then
       local mapped_bufnr = buffer_mapping[info.old_path]
+      print(string.format("  -> Mapped bufnr: %s", mapped_bufnr or "nil"))
+      
       if mapped_bufnr and vim.api.nvim_buf_is_valid(mapped_bufnr) then
         -- Set the window to show the remapped buffer
+        print(string.format("  -> Setting window to buffer %d", mapped_bufnr))
         vim.api.nvim_win_set_buf(winnr, mapped_bufnr)
+        print("  -> Window buffer set successfully")
       else
         -- File doesn't exist in new worktree, open the equivalent path if possible
         local new_buf_path = new_path .. info.rel_path
+        print(string.format("  -> No mapping found, trying to open: %s", new_buf_path))
         if vim.fn.filereadable(new_buf_path) == 1 then
           vim.api.nvim_win_call(winnr, function()
             vim.cmd('edit ' .. vim.fn.fnameescape(new_buf_path))
           end)
+          print("  -> Opened new file in window")
+        else
+          print("  -> File not readable, leaving window as-is")
         end
       end
+    else
+      print("  -> Window no longer valid")
     end
   end
+  
+  print("=== END REMAP BUFFERS DEBUG ===\n")
 end
 
 -- Create a new worktree
