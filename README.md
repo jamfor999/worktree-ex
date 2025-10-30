@@ -1,6 +1,7 @@
 # worktree.nvim
 
 An intelligent Neovim plugin for seamless git worktree management. Easily switch between worktrees, create new ones, and have your buffers automatically remapped to the corresponding files in the new worktree.
+master branch
 
 ## Features
 
