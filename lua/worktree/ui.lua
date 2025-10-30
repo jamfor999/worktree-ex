@@ -5,12 +5,20 @@ local git = require('worktree.git')
 function M.show_worktree_selector(callback)
   local worktrees = git.list_worktrees()
 
-  if #worktrees == 0 then
+  -- Filter out bare repositories
+  local non_bare_worktrees = {}
+  for _, wt in ipairs(worktrees) do
+    if not wt.is_bare then
+      table.insert(non_bare_worktrees, wt)
+    end
+  end
+
+  if #non_bare_worktrees == 0 then
     vim.notify('No worktrees found', vim.log.levels.WARN)
     return
   end
 
-  if #worktrees == 1 then
+  if #non_bare_worktrees == 1 then
     vim.notify('Only one worktree exists', vim.log.levels.INFO)
     return
   end
@@ -22,7 +30,7 @@ function M.show_worktree_selector(callback)
   local items = {}
   local paths = {}
 
-  for _, wt in ipairs(worktrees) do
+  for _, wt in ipairs(non_bare_worktrees) do
     local display = wt.branch or wt.path
     local is_current = wt.path == current_path
 
@@ -30,9 +38,7 @@ function M.show_worktree_selector(callback)
       display = display .. ' (current)'
     end
 
-    if wt.is_bare then
-      display = display .. ' [bare]'
-    elseif wt.is_detached then
+    if wt.is_detached then
       display = display .. ' [detached]'
     end
 

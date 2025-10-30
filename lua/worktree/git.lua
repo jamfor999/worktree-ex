@@ -150,14 +150,25 @@ function M.create_worktree(path, branch, create_branch)
     return false, 'Not in a git repository'
   end
 
-  -- Expand path relative to git root
-  local git_root = M.get_git_root()
+  -- Get the git common directory (the bare repo or main .git dir)
+  local git_dir_output = exec_git({ 'rev-parse', '--git-common-dir' })
+  local git_common_dir = git_dir_output and vim.trim(git_dir_output) or vim.fn.getcwd()
+
+  -- Make git_common_dir absolute if it's relative
+  if not git_common_dir:match('^/') then
+    git_common_dir = vim.fn.getcwd() .. '/' .. git_common_dir
+  end
+  git_common_dir = vim.fn.fnamemodify(git_common_dir, ':p'):gsub('/$', '')
+
+  -- Expand path relative to git common directory's parent
   if not path:match('^/') and not path:match('^~') then
-    -- Relative path, make it relative to git root parent
-    path = vim.fn.fnamemodify(git_root, ':h') .. '/' .. path
+    -- Relative path, make it relative to git common dir parent
+    path = vim.fn.fnamemodify(git_common_dir, ':h') .. '/' .. path
   end
 
   path = vim.fn.expand(path)
+  -- Resolve to absolute path
+  path = vim.fn.fnamemodify(path, ':p'):gsub('/$', '')
 
   local args = { 'worktree', 'add' }
 
