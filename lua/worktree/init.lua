@@ -189,9 +189,34 @@ function M._do_switch(new_worktree_path)
     restored = M._restore_buffer_list(new_worktree_path)
   end
 
-  -- Only refresh neo-tree if session wasn't restored (session handles neo-tree state)
+  -- If no session was restored, clean up old buffers and start fresh
   if not restored then
-    print('[worktree] DEBUG: No session restored, manually refreshing neo-tree')
+    print('[worktree] DEBUG: No session restored, cleaning up old buffers')
+    
+    -- Close all file buffers from the old worktree
+    local closed_count = 0
+    for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+      if vim.api.nvim_buf_is_valid(bufnr) then
+        local buf_name = vim.api.nvim_buf_get_name(bufnr)
+        local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
+        
+        -- Only close regular file buffers (not special buffers like neo-tree)
+        if buftype == '' and buf_name ~= '' then
+          local buf_modified = vim.api.nvim_buf_get_option(bufnr, 'modified')
+          if not buf_modified then
+            print('[worktree] DEBUG: Closing old buffer ' .. bufnr .. ': ' .. buf_name)
+            pcall(vim.api.nvim_buf_delete, bufnr, { force = false })
+            closed_count = closed_count + 1
+          else
+            print('[worktree] DEBUG: Skipping modified buffer ' .. bufnr .. ': ' .. buf_name)
+          end
+        end
+      end
+    end
+    print('[worktree] DEBUG: Closed ' .. closed_count .. ' old buffers')
+    
+    -- Refresh neo-tree for the new worktree
+    print('[worktree] DEBUG: Manually refreshing neo-tree for new worktree')
     local ok, neotree = pcall(require, 'neo-tree.command')
     if ok then
       vim.cmd('Neotree close')
