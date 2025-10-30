@@ -1,0 +1,11 @@
+# Neovim
+*.sw?
+.nvim/
+.netrwhist
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Plugin manager
+lazy-lock.json

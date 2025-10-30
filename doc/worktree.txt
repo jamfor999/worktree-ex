@@ -1,0 +1,193 @@
+*worktree.txt*  Intelligent git worktree management for Neovim
+
+==============================================================================
+CONTENTS                                                  *worktree-contents*
+
+1. Introduction ...................... |worktree-introduction|
+2. Requirements ...................... |worktree-requirements|
+3. Installation ...................... |worktree-installation|
+4. Configuration ..................... |worktree-configuration|
+5. Commands .......................... |worktree-commands|
+6. Functions ......................... |worktree-functions|
+7. Statusline ........................ |worktree-statusline|
+
+==============================================================================
+1. INTRODUCTION                                       *worktree-introduction*
+
+worktree.nvim is an intelligent Neovim plugin for seamless git worktree
+management. It allows you to:
+
+- Switch between worktrees with automatic buffer remapping
+- Create new worktrees interactively
+- Display current branch in statusline
+- Automatically refresh file explorers
+
+==============================================================================
+2. REQUIREMENTS                                       *worktree-requirements*
+
+- Neovim >= 0.7.0
+- Git with worktree support
+- (Optional) Nerd Font for statusline icons
+
+==============================================================================
+3. INSTALLATION                                       *worktree-installation*
+
+Using lazy.nvim: >
+    {
+      'yourusername/worktree.nvim',
+      config = function()
+        require('worktree').setup()
+      end,
+    }
+<
+
+==============================================================================
+4. CONFIGURATION                                     *worktree-configuration*
+
+Default configuration: >
+    require('worktree').setup({
+      keymaps = {
+        switch = '<leader>gws',
+        create = '<leader>gwc',
+      },
+      auto_remap_buffers = true,
+      notify = true,
+      enable_statusline = true,
+    })
+<
+
+                                                     *worktree.config.keymaps*
+keymaps.switch~
+    Keymap to switch worktrees. Default: '<leader>gws'
+
+keymaps.create~
+    Keymap to create new worktrees. Default: '<leader>gwc'
+
+                                             *worktree.config.auto_remap_buffers*
+auto_remap_buffers~
+    Automatically remap buffer paths when switching worktrees.
+    Default: true
+
+                                                      *worktree.config.notify*
+notify~
+    Show notifications when switching worktrees.
+    Default: true
+
+                                            *worktree.config.enable_statusline*
+enable_statusline~
+    Enable automatic statusline refresh.
+    Default: true
+
+==============================================================================
+5. COMMANDS                                              *worktree-commands*
+
+                                                          *:WorktreeSwitch*
+:WorktreeSwitch
+    Open a selector to switch to a different worktree. Buffers will be
+    automatically remapped to their corresponding files in the new worktree.
+
+                                                          *:WorktreeCreate*
+:WorktreeCreate
+    Interactively create a new worktree. You'll be prompted for:
+    - Path for the new worktree
+    - Whether to create a new branch or checkout existing
+    - Branch name
+    - Whether to switch to the new worktree
+
+                                                            *:WorktreeList*
+:WorktreeList
+    List all available worktrees with their branches and paths.
+    The current worktree is marked with an asterisk.
+
+                                                   *:WorktreeStatuslineClick*
+:WorktreeStatuslineClick
+    Opens the worktree selector (same as :WorktreeSwitch).
+    This is automatically bound to clicking the statusline component.
+
+==============================================================================
+6. FUNCTIONS                                            *worktree-functions*
+
+require('worktree').setup({opts})                       *worktree.setup()*
+    Setup function. Call this in your init.lua with optional configuration.
+
+    Parameters: ~
+        {opts}  (table|nil) Configuration options
+
+require('worktree').switch_worktree({path})     *worktree.switch_worktree()*
+    Switch to a different worktree.
+
+    Parameters: ~
+        {path}  (string|nil) Path to the worktree. If nil, opens a selector.
+
+require('worktree').create_worktree()           *worktree.create_worktree()*
+    Create a new worktree interactively.
+
+require('worktree').list_worktrees()             *worktree.list_worktrees()*
+    List all worktrees.
+
+    Returns: ~
+        (table) Array of worktree objects with fields:
+            - path: Full path to the worktree
+            - branch: Branch name (or nil)
+            - head: HEAD commit hash
+            - is_bare: Whether it's a bare repository
+            - is_detached: Whether HEAD is detached
+
+require('worktree').get_current_worktree() *worktree.get_current_worktree()*
+    Get information about the current worktree.
+
+    Returns: ~
+        (table|nil) Current worktree object, or nil if not in a worktree
+
+==============================================================================
+7. STATUSLINE                                          *worktree-statusline*
+
+The plugin provides statusline integration showing the current branch with
+a git icon.
+
+Lualine integration~
+>
+    require('lualine').setup {
+      sections = {
+        lualine_b = {
+          require('worktree').statusline.lualine_component(),
+        },
+      },
+    }
+<
+
+Heirline integration~
+>
+    local WorktreeComponent =
+      require('worktree').statusline.heirline_component()
+<
+
+Custom statusline~
+>
+    local text = require('worktree').statusline.get_statusline_component()
+    -- Returns: " main" (with git branch icon)
+<
+
+                              *worktree.statusline.get_statusline_component()*
+require('worktree').statusline.get_statusline_component()
+    Get the statusline component as a formatted string.
+
+    Returns: ~
+        (string) Branch name with icon, or empty string if not in a repo
+
+                                   *worktree.statusline.lualine_component()*
+require('worktree').statusline.lualine_component()
+    Get a lualine component configuration.
+
+    Returns: ~
+        (table) Lualine component with on_click handler
+
+                                  *worktree.statusline.heirline_component()*
+require('worktree').statusline.heirline_component()
+    Get a heirline component configuration.
+
+    Returns: ~
+        (table) Heirline component with on_click handler
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:

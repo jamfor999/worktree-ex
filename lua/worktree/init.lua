@@ -1,0 +1,168 @@
+local M = {}
+
+local git = require('worktree.git')
+local ui = require('worktree.ui')
+local statusline = require('worktree.statusline')
+
+M.config = {
+  -- Default configuration
+  keymaps = {
+    switch = '<leader>gws',
+    create = '<leader>gwc',
+  },
+  -- Auto-update buffers when switching worktrees
+  auto_remap_buffers = true,
+  -- Show notifications
+  notify = true,
+  -- Enable statusline component
+  enable_statusline = true,
+}
+
+-- Setup function to be called by user
+function M.setup(opts)
+  M.config = vim.tbl_deep_extend('force', M.config, opts or {})
+
+  -- Set up keymaps
+  vim.keymap.set('n', M.config.keymaps.switch, function()
+    M.switch_worktree()
+  end, { desc = 'Switch worktree' })
+
+  vim.keymap.set('n', M.config.keymaps.create, function()
+    M.create_worktree()
+  end, { desc = 'Create new worktree' })
+
+  -- Set up statusline
+  if M.config.enable_statusline then
+    statusline.setup_auto_refresh()
+    statusline.setup_click_handler()
+  end
+end
+
+-- Expose statusline module for manual integration
+M.statusline = statusline
+
+-- Get current worktree info
+function M.get_current_worktree()
+  return git.get_current_worktree()
+end
+
+-- List all worktrees
+function M.list_worktrees()
+  return git.list_worktrees()
+end
+
+-- Switch to a different worktree
+function M.switch_worktree(worktree_path)
+  if not worktree_path then
+    -- Show UI selector
+    ui.show_worktree_selector(function(selected)
+      if selected then
+        M._do_switch(selected)
+      end
+    end)
+  else
+    M._do_switch(worktree_path)
+  end
+end
+
+-- Internal function to perform the switch
+function M._do_switch(new_worktree_path)
+  local current = git.get_current_worktree()
+  if not current then
+    vim.notify('Not in a git worktree', vim.log.levels.ERROR)
+    return
+  end
+
+  if current.path == new_worktree_path then
+    vim.notify('Already in this worktree', vim.log.levels.INFO)
+    return
+  end
+
+  -- Remap all buffers
+  if M.config.auto_remap_buffers then
+    M._remap_buffers(current.path, new_worktree_path)
+  end
+
+  -- Change directory
+  vim.cmd('cd ' .. vim.fn.fnameescape(new_worktree_path))
+
+  -- Refresh file explorer if neo-tree is loaded
+  local ok, neotree = pcall(require, 'neo-tree.command')
+  if ok then
+    vim.cmd('Neotree close')
+    vim.schedule(function()
+      vim.cmd('Neotree show')
+    end)
+  end
+
+  if M.config.notify then
+    local worktrees = git.list_worktrees()
+    local target_wt = vim.tbl_filter(function(wt)
+      return wt.path == new_worktree_path
+    end, worktrees)[1]
+
+    local branch = target_wt and target_wt.branch or 'unknown'
+    vim.notify('Switched to worktree: ' .. branch, vim.log.levels.INFO)
+  end
+end
+
+-- Remap buffer paths from old worktree to new worktree
+function M._remap_buffers(old_path, new_path)
+  local buffers = vim.api.nvim_list_bufs()
+
+  for _, bufnr in ipairs(buffers) do
+    if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
+      local buf_name = vim.api.nvim_buf_get_name(bufnr)
+
+      -- Check if buffer path is within the old worktree
+      if buf_name:sub(1, #old_path) == old_path then
+        -- Calculate relative path
+        local rel_path = buf_name:sub(#old_path + 1)
+
+        -- Create new path in the new worktree
+        local new_buf_path = new_path .. rel_path
+
+        -- Check if the file exists in the new worktree
+        if vim.fn.filereadable(new_buf_path) == 1 then
+          -- Update buffer to point to new path
+          vim.api.nvim_buf_set_name(bufnr, new_buf_path)
+
+          -- Reload the buffer
+          vim.api.nvim_buf_call(bufnr, function()
+            vim.cmd('edit!')
+          end)
+        else
+          -- File doesn't exist in new worktree, close the buffer
+          local buf_modified = vim.api.nvim_buf_get_option(bufnr, 'modified')
+          if not buf_modified then
+            vim.api.nvim_buf_delete(bufnr, { force = false })
+          end
+        end
+      end
+    end
+  end
+end
+
+-- Create a new worktree
+function M.create_worktree()
+  ui.show_create_worktree_ui(function(path, branch)
+    if path and branch then
+      local success, result = git.create_worktree(path, branch)
+      if success then
+        vim.notify('Created worktree: ' .. path .. ' on branch ' .. branch, vim.log.levels.INFO)
+        -- Optionally switch to the new worktree
+        vim.ui.select({'Yes', 'No'}, {
+          prompt = 'Switch to new worktree?',
+        }, function(choice)
+          if choice == 'Yes' then
+            M._do_switch(result.path)
+          end
+        end)
+      else
+        vim.notify('Failed to create worktree: ' .. (result or 'unknown error'), vim.log.levels.ERROR)
+      end
+    end
+  end)
+end
+
+return M
