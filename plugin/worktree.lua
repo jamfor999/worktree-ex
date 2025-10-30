@@ -7,16 +7,22 @@ if vim.g.loaded_worktree then
 end
 vim.g.loaded_worktree = 1
 
--- Check for bare repository on startup
+-- Auto-restore buffers or check for bare repository on startup
 vim.api.nvim_create_autocmd('VimEnter', {
   pattern = '*',
   callback = function()
     -- Use schedule to ensure this runs after other startup tasks
     vim.schedule(function()
-      require('worktree').check_bare_repo()
+      local worktree = require('worktree')
+      
+      -- First check if we're in a bare repo
+      worktree.check_bare_repo()
+      
+      -- Then check if we should auto-restore buffers
+      worktree.check_auto_restore_buffers()
     end)
   end,
-  desc = 'Check if opened in bare repository and prompt for worktree creation',
+  desc = 'Auto-restore worktree buffers or check for bare repository',
 })
 
 -- Create user commands
@@ -44,3 +50,7 @@ vim.api.nvim_create_user_command('WorktreeList', function()
     print(string.format('%s%s: %s', marker, branch, wt.path))
   end
 end, { desc = 'List all worktrees' })
+
+vim.api.nvim_create_user_command('WorktreeBufferClear', function()
+  require('worktree').clear_buffer_list()
+end, { desc = 'Clear persisted buffer list for current worktree and quit' })

@@ -1,18 +1,18 @@
 # worktree.nvim
 
-An intelligent Neovim plugin for seamless git worktree management. Easily switch between worktrees, create new ones, and have your buffers automatically remapped to the corresponding files in the new worktree.
-master branch
+An intelligent Neovim plugin for seamless git worktree management. Easily switch between worktrees, create new ones, and have your buffer state automatically persisted and restored when switching contexts.
 
 ## Features
 
 - **Intelligent Worktree Detection**: Automatically detects when you're in a git worktree
 - **Seamless Switching**: Switch between worktrees with a simple keymap
-- **Buffer Remapping**: Automatically updates open buffers to point to files in the new worktree
+- **Buffer Persistence**: Automatically saves and restores your open buffers for each worktree
+- **Auto-Restore on Startup**: When opening Neovim in a worktree directory, automatically restores previously saved buffers
 - **Easy Creation**: Create new worktrees with an interactive UI
 - **Statusline Integration**: Shows current branch with git icon (lualine/heirline/custom)
 - **Click-to-Switch**: Optional click handler override for AstroNvim statusline
 - **File Explorer Support**: Automatically refreshes neo-tree when switching worktrees
-- **User Commands**: Provides `:WorktreeSwitch`, `:WorktreeCreate`, and `:WorktreeList` commands
+- **User Commands**: Provides `:WorktreeSwitch`, `:WorktreeCreate`, `:WorktreeList`, and `:WorktreeBufferClear` commands
 
 ## Installation
 
@@ -39,7 +39,7 @@ return {
           switch = "<leader>gws",
           create = "<leader>gwc",
         },
-        auto_remap_buffers = true,
+        auto_persist_buffers = true,
         notify = true,
         enable_statusline = true,
         -- Try to override AstroNvim's git branch click to use worktree switcher
@@ -121,9 +121,9 @@ require('worktree').setup({
     create = '<leader>gwc',  -- Opens worktree creation UI
   },
   
-  -- Automatically remap buffers when switching worktrees
-  -- When true, open buffers are updated to point to files in the new worktree
-  auto_remap_buffers = true,
+  -- Automatically persist/restore buffers when switching worktrees
+  -- When true, open buffers are saved when leaving a worktree and restored when returning
+  auto_persist_buffers = true,
   
   -- Show notifications when switching/creating worktrees
   notify = true,
@@ -144,7 +144,7 @@ require('worktree').setup({
   - `switch`: Keymap to open the worktree selector (default: `<leader>gws`)
   - `create`: Keymap to open the worktree creation UI (default: `<leader>gwc`)
 
-- **auto_remap_buffers**: When switching worktrees, automatically remap open buffers to their corresponding files in the new worktree. For example, if you have `feature-branch/src/main.lua` open and switch to the `main` worktree, the buffer will be remapped to `main/src/main.lua`.
+- **auto_persist_buffers**: When switching worktrees, automatically save the list of open buffers for the current worktree and restore the saved buffer list when switching to another worktree. This allows you to maintain separate working contexts for each worktree. Also enables auto-restore on startup when opening Neovim in a worktree directory. Buffer lists are stored in `~/.config/worktree-ex/bufferlist/`.
 
 - **notify**: Show notifications using `vim.notify()` when performing worktree operations (switching, creating, errors).
 
@@ -164,8 +164,8 @@ Press `<leader>gws` (or your configured keymap) to open the worktree selector. Y
 
 When you switch worktrees:
 - Your current directory changes to the new worktree
-- All open buffers are remapped to their corresponding files in the new worktree
-- If a file doesn't exist in the new worktree, its buffer is closed (unless modified)
+- All open buffers from the current worktree are saved to disk
+- Previously saved buffers for the target worktree are restored
 - File explorers (like neo-tree) are automatically refreshed
 
 ### Creating Worktrees
@@ -191,6 +191,30 @@ To see all available worktrees:
 ```
 
 This will print all worktrees with their branches and paths, marking the current one.
+
+### Auto-Restore Buffers on Startup
+
+When you open Neovim in a worktree directory (e.g., `nvim .` or just `nvim` in the directory):
+
+1. **If not a worktree**: Normal directory listing behavior
+2. **If a worktree with no saved buffers**: Normal directory listing behavior  
+3. **If a worktree with saved buffers**: Automatically restores your previously open buffers
+
+This means you can work on a worktree, close Neovim, and when you reopen it in that directory, all your buffers will be automatically restored.
+
+### Clearing Buffer List
+
+If you want to start fresh in a worktree and clear its saved buffer list:
+
+```vim
+:WorktreeBufferClear
+```
+
+This will:
+1. Delete the persisted buffer list for the current worktree
+2. Automatically quit Neovim
+
+The next time you open Neovim in this worktree, it will show the normal directory listing instead of restoring buffers.
 
 ### Statusline Integration
 
@@ -281,22 +305,58 @@ worktree.create_worktree()
 
 The plugin uses `git worktree list --porcelain` to detect all worktrees in your repository. When you open Neovim in a worktree directory, it automatically detects which worktree you're in.
 
-### Buffer Remapping
+### Buffer Persistence
 
 When switching worktrees, the plugin:
 
-1. Identifies all open buffers that belong to the current worktree
-2. Calculates the relative path of each file within the worktree
-3. Constructs the new path in the target worktree
-4. Updates the buffer to point to the new path
-5. Reloads the buffer content
+1. Saves the list of all open buffers from the current worktree to `~/.config/worktree-ex/bufferlist/`
+2. Changes directory to the new worktree
+3. Closes existing file buffers (except modified ones)
+4. Restores previously saved buffers for the new worktree (if any exist)
+5. Opens the first buffer in the current window
 
-For example, if you have:
-- Current worktree: `/repo/feature-branch`
-- Open file: `/repo/feature-branch/src/main.lua`
-- Target worktree: `/repo/main`
+This allows you to maintain separate working contexts for each worktree. For example:
+- Working on `feature-1` worktree with `src/feature.lua` and `tests/feature_test.lua` open
+- Switch to `main` worktree - those buffers are saved and `main`'s previously open buffers are restored
+- Switch back to `feature-1` - your original buffers (`src/feature.lua` and `tests/feature_test.lua`) are restored
 
-The buffer will be remapped to: `/repo/main/src/main.lua`
+Buffer lists are stored as JSON files in `~/.config/worktree-ex/bufferlist/`, with one file per worktree.
+
+### Typical Workflow
+
+Here's how the buffer persistence works in practice:
+
+1. **Start working in a worktree**:
+   ```bash
+   cd ~/projects/myapp/feature-auth
+   nvim .
+   ```
+   - Opens with normal directory listing (no saved buffers yet)
+   - You open files: `src/auth.lua`, `tests/auth_test.lua`, `README.md`
+
+2. **Switch to another worktree**:
+   - Press `<leader>gws` and select `main` worktree
+   - Your current buffers are automatically saved
+   - `main` worktree's saved buffers are restored (if any)
+
+3. **Work on main, then close Neovim**:
+   - Close Neovim with `:q` or `:qa`
+   - All open buffers are saved for the `main` worktree
+
+4. **Reopen in feature worktree**:
+   ```bash
+   cd ~/projects/myapp/feature-auth
+   nvim .
+   ```
+   - Instead of directory listing, your previous buffers are automatically restored
+   - You're immediately back to working on `src/auth.lua`, `tests/auth_test.lua`, etc.
+
+5. **Start fresh** (optional):
+   ```vim
+   :WorktreeBufferClear
+   ```
+   - Clears saved buffers and quits
+   - Next time you open, you'll get the directory listing again
 
 ### File Explorer Integration
 
@@ -369,11 +429,12 @@ vim.keymap.set('n', '<leader>gw', worktree_picker, { desc = 'Find worktrees' })
 
 ## Troubleshooting
 
-### Buffers not remapping correctly
+### Buffers not persisting/restoring correctly
 
-Make sure `auto_remap_buffers` is enabled in your config. If issues persist, check that:
-- File paths are consistent (no symlinks causing path mismatches)
-- Files exist in both worktrees at the same relative path
+Make sure `auto_persist_buffers` is enabled in your config. If issues persist, check that:
+- The buffer list directory `~/.config/worktree-ex/bufferlist/` is writable
+- Files exist at the saved paths in the worktree
+- Buffers being saved are actual files (not special buffers like terminals)
 
 ### Statusline not showing branch
 

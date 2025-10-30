@@ -16,7 +16,7 @@ return {
           switch = "<leader>gws",
           create = "<leader>gwc",
         },
-        auto_remap_buffers = true,
+        auto_persist_buffers = true,
         notify = true,
         enable_statusline = true,
         -- Try to override AstroNvim's git branch click to use worktree switcher
