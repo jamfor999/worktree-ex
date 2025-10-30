@@ -86,12 +86,17 @@ end
 
 -- Save current buffer list for a worktree
 function M._save_buffer_list(worktree_path)
+  print('[worktree] DEBUG: _save_buffer_list called for path: ' .. worktree_path)
   local buffers = {}
   
   -- Collect all valid file buffers from this worktree
-  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+  local all_bufs = vim.api.nvim_list_bufs()
+  print('[worktree] DEBUG: Total buffers: ' .. #all_bufs)
+  
+  for _, bufnr in ipairs(all_bufs) do
     if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
       local buf_name = vim.api.nvim_buf_get_name(bufnr)
+      print('[worktree] DEBUG: Checking buffer ' .. bufnr .. ': ' .. (buf_name ~= '' and buf_name or '<unnamed>'))
       
       -- Only save buffers that are actual files within the worktree
       if buf_name ~= '' and buf_name:sub(1, #worktree_path) == worktree_path then
@@ -100,51 +105,74 @@ function M._save_buffer_list(worktree_path)
           rel_path = rel_path:sub(2)
         end
         
+        print('[worktree] DEBUG: Adding buffer to save list: ' .. rel_path)
         table.insert(buffers, {
           path = rel_path,
           cursor = vim.api.nvim_buf_get_mark(bufnr, '"'),
         })
+      else
+        print('[worktree] DEBUG: Skipping buffer (not in worktree or unnamed)')
       end
     end
   end
   
+  print('[worktree] DEBUG: Total buffers to save: ' .. #buffers)
+  
   -- Create directory if it doesn't exist
   local dir = get_bufferlist_dir()
   vim.fn.mkdir(dir, 'p')
+  print('[worktree] DEBUG: Buffer list directory: ' .. dir)
   
   -- Write buffer list to file
   local filename = get_bufferlist_filename(worktree_path)
+  print('[worktree] DEBUG: Writing to file: ' .. filename)
   local file = io.open(filename, 'w')
   if file then
-    file:write(vim.json.encode(buffers))
+    local json_content = vim.json.encode(buffers)
+    print('[worktree] DEBUG: JSON content: ' .. json_content)
+    file:write(json_content)
     file:close()
+    print('[worktree] DEBUG: Successfully wrote buffer list')
+  else
+    print('[worktree] ERROR: Failed to open file for writing: ' .. filename)
   end
 end
 
 -- Restore buffer list for a worktree
 function M._restore_buffer_list(worktree_path)
+  print('[worktree] DEBUG: _restore_buffer_list called for path: ' .. worktree_path)
   local filename = get_bufferlist_filename(worktree_path)
+  print('[worktree] DEBUG: Looking for buffer list file: ' .. filename)
   
   -- Check if buffer list file exists
   if vim.fn.filereadable(filename) ~= 1 then
+    print('[worktree] DEBUG: No buffer list file found, skipping restore')
     return
   end
+  
+  print('[worktree] DEBUG: Buffer list file exists, reading...')
   
   -- Read and parse buffer list
   local file = io.open(filename, 'r')
   if not file then
+    print('[worktree] ERROR: Failed to open buffer list file')
     return
   end
   
   local content = file:read('*a')
   file:close()
+  print('[worktree] DEBUG: File content: ' .. content)
   
   local ok, buffers = pcall(vim.json.decode, content)
   if not ok or not buffers then
+    print('[worktree] ERROR: Failed to parse buffer list JSON: ' .. (ok and 'nil buffers' or buffers))
     return
   end
   
+  print('[worktree] DEBUG: Parsed ' .. #buffers .. ' buffers from file')
+  
   -- Close all existing buffers except special ones
+  local closed_count = 0
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_valid(bufnr) then
       local buf_name = vim.api.nvim_buf_get_name(bufnr)
@@ -154,67 +182,101 @@ function M._restore_buffer_list(worktree_path)
       if buftype == '' and buf_name ~= '' then
         local buf_modified = vim.api.nvim_buf_get_option(bufnr, 'modified')
         if not buf_modified then
+          print('[worktree] DEBUG: Closing buffer ' .. bufnr .. ': ' .. buf_name)
           pcall(vim.api.nvim_buf_delete, bufnr, { force = false })
+          closed_count = closed_count + 1
+        else
+          print('[worktree] DEBUG: Skipping modified buffer ' .. bufnr .. ': ' .. buf_name)
         end
       end
     end
   end
+  print('[worktree] DEBUG: Closed ' .. closed_count .. ' buffers')
   
   -- Restore buffers
+  local restored_count = 0
   for _, buf_info in ipairs(buffers) do
     local full_path = worktree_path .. '/' .. buf_info.path
+    print('[worktree] DEBUG: Attempting to restore buffer: ' .. full_path)
     
     if vim.fn.filereadable(full_path) == 1 then
       -- Open the buffer
       vim.cmd('badd ' .. vim.fn.fnameescape(full_path))
+      print('[worktree] DEBUG: Successfully added buffer: ' .. buf_info.path)
+      restored_count = restored_count + 1
+    else
+      print('[worktree] DEBUG: File not readable, skipping: ' .. full_path)
     end
   end
+  print('[worktree] DEBUG: Restored ' .. restored_count .. ' buffers')
   
   -- Open the first buffer in the current window if any were restored
   if #buffers > 0 then
     local first_path = worktree_path .. '/' .. buffers[1].path
+    print('[worktree] DEBUG: Opening first buffer in window: ' .. first_path)
     if vim.fn.filereadable(first_path) == 1 then
       vim.cmd('edit ' .. vim.fn.fnameescape(first_path))
+      print('[worktree] DEBUG: Successfully opened first buffer')
+    else
+      print('[worktree] DEBUG: First buffer not readable')
     end
+  else
+    print('[worktree] DEBUG: No buffers to open in window')
   end
 end
 
 -- Internal function to perform the switch
 function M._do_switch(new_worktree_path)
+  print('[worktree] DEBUG: _do_switch called with path: ' .. new_worktree_path)
+  
   local current = git.get_current_worktree()
   if not current then
+    print('[worktree] ERROR: Not in a git worktree')
     vim.notify('Not in a git worktree', vim.log.levels.ERROR)
     return
   end
+  
+  print('[worktree] DEBUG: Current worktree: ' .. current.path)
+  print('[worktree] DEBUG: Current branch: ' .. (current.branch or 'unknown'))
 
   -- Resolve the path to absolute path (handles .. and .)
   new_worktree_path = vim.fn.fnamemodify(new_worktree_path, ':p'):gsub('/$', '')
+  print('[worktree] DEBUG: Resolved target path: ' .. new_worktree_path)
 
   if current.path == new_worktree_path then
+    print('[worktree] DEBUG: Already in target worktree')
     vim.notify('Already in this worktree', vim.log.levels.INFO)
     return
   end
 
   -- Save current buffer list before switching
+  print('[worktree] DEBUG: auto_persist_buffers = ' .. tostring(M.config.auto_persist_buffers))
   if M.config.auto_persist_buffers then
+    print('[worktree] DEBUG: Saving buffer list for current worktree')
     M._save_buffer_list(current.path)
   end
 
   -- Change directory
+  print('[worktree] DEBUG: Changing directory to: ' .. new_worktree_path)
   vim.cmd('cd ' .. vim.fn.fnameescape(new_worktree_path))
+  print('[worktree] DEBUG: Current directory after cd: ' .. vim.fn.getcwd())
 
   -- Restore buffer list for new worktree
   if M.config.auto_persist_buffers then
+    print('[worktree] DEBUG: Restoring buffer list for new worktree')
     M._restore_buffer_list(new_worktree_path)
   end
 
   -- Refresh file explorer if neo-tree is loaded
   local ok, neotree = pcall(require, 'neo-tree.command')
   if ok then
+    print('[worktree] DEBUG: Refreshing neo-tree')
     vim.cmd('Neotree close')
     vim.schedule(function()
       vim.cmd('Neotree show')
     end)
+  else
+    print('[worktree] DEBUG: neo-tree not loaded')
   end
 
   if M.config.notify then
@@ -224,6 +286,7 @@ function M._do_switch(new_worktree_path)
     end, worktrees)[1]
 
     local branch = target_wt and target_wt.branch or 'unknown'
+    print('[worktree] DEBUG: Switch complete to branch: ' .. branch)
     vim.notify('Switched to worktree: ' .. branch, vim.log.levels.INFO)
   end
 end
@@ -295,42 +358,56 @@ end
 
 -- Check if we should auto-restore buffers on startup
 function M.check_auto_restore_buffers()
+  print('[worktree] DEBUG: check_auto_restore_buffers called')
+  
   -- Only run if we're in a git worktree (not bare repo)
   if not M.config.auto_persist_buffers then
+    print('[worktree] DEBUG: auto_persist_buffers disabled, skipping')
     return
   end
   
   local current = git.get_current_worktree()
   if not current or current.is_bare then
+    print('[worktree] DEBUG: Not in a worktree or in bare repo, skipping')
     return
   end
+  
+  print('[worktree] DEBUG: Current worktree: ' .. current.path)
   
   -- Check if nvim was opened with a directory argument (nvim .)
   local argv = vim.fn.argv()
   local opened_with_dir = false
+  
+  print('[worktree] DEBUG: argv count: ' .. #argv)
   
   if #argv == 1 then
     local arg = argv[1]
     local stat = vim.loop.fs_stat(arg)
     if stat and stat.type == 'directory' then
       opened_with_dir = true
+      print('[worktree] DEBUG: Opened with directory: ' .. arg)
     end
   elseif #argv == 0 then
     -- Also handle when opened with no arguments in a directory
     opened_with_dir = true
+    print('[worktree] DEBUG: Opened with no arguments')
   end
   
   if not opened_with_dir then
+    print('[worktree] DEBUG: Not opened with directory, skipping')
     return
   end
   
   -- Check if persisted buffer list exists
   local filename = get_bufferlist_filename(current.path)
+  print('[worktree] DEBUG: Checking for buffer list file: ' .. filename)
   if vim.fn.filereadable(filename) ~= 1 then
     -- No persisted buffers, let default behavior happen
+    print('[worktree] DEBUG: No persisted buffer list found')
     return
   end
   
+  print('[worktree] DEBUG: Found persisted buffer list, scheduling restore')
   -- We have persisted buffers - restore them instead of showing directory listing
   vim.schedule(function()
     M._restore_buffer_list(current.path)
