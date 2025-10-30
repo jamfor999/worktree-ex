@@ -3,7 +3,7 @@
 
 return {
   {
-    "yourusername/worktree.nvim",
+    "jamfor999/worktree-ex",
     event = "VeryLazy",
     dependencies = {
       "nvim-lua/plenary.nvim",
