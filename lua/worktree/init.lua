@@ -117,7 +117,26 @@ end
 
 -- Remap buffer paths from old worktree to new worktree
 function M._remap_buffers(old_path, new_path)
+  -- First, capture which buffers are visible in which windows
+  local window_buffers = {}
+  for _, winnr in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_is_valid(winnr) then
+      local bufnr = vim.api.nvim_win_get_buf(winnr)
+      local buf_name = vim.api.nvim_buf_get_name(bufnr)
+      
+      -- Only track windows showing buffers from the old worktree
+      if buf_name:sub(1, #old_path) == old_path then
+        window_buffers[winnr] = {
+          bufnr = bufnr,
+          old_path = buf_name,
+          rel_path = buf_name:sub(#old_path + 1)
+        }
+      end
+    end
+  end
+
   local buffers = vim.api.nvim_list_bufs()
+  local buffer_mapping = {} -- Map old buffer to new buffer
 
   for _, bufnr in ipairs(buffers) do
     if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
@@ -140,12 +159,34 @@ function M._remap_buffers(old_path, new_path)
           vim.api.nvim_buf_call(bufnr, function()
             vim.cmd('edit!')
           end)
+          
+          -- Track the mapping for window restoration
+          buffer_mapping[buf_name] = bufnr
         else
           -- File doesn't exist in new worktree, close the buffer
           local buf_modified = vim.api.nvim_buf_get_option(bufnr, 'modified')
           if not buf_modified then
             vim.api.nvim_buf_delete(bufnr, { force = false })
           end
+        end
+      end
+    end
+  end
+
+  -- Restore buffers in windows
+  for winnr, info in pairs(window_buffers) do
+    if vim.api.nvim_win_is_valid(winnr) then
+      local mapped_bufnr = buffer_mapping[info.old_path]
+      if mapped_bufnr and vim.api.nvim_buf_is_valid(mapped_bufnr) then
+        -- Set the window to show the remapped buffer
+        vim.api.nvim_win_set_buf(winnr, mapped_bufnr)
+      else
+        -- File doesn't exist in new worktree, open the equivalent path if possible
+        local new_buf_path = new_path .. info.rel_path
+        if vim.fn.filereadable(new_buf_path) == 1 then
+          vim.api.nvim_win_call(winnr, function()
+            vim.cmd('edit ' .. vim.fn.fnameescape(new_buf_path))
+          end)
         end
       end
     end
