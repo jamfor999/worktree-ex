@@ -92,20 +92,24 @@ end
 
 -- Get the current worktree
 function M.get_current_worktree()
-  local cwd = vim.fn.getcwd()
+  -- Use git to directly get the worktree path
+  local toplevel = exec_git({ 'rev-parse', '--show-toplevel' })
+  if not toplevel then
+    return nil
+  end
+  
+  toplevel = vim.trim(toplevel)
+  toplevel = vim.fn.fnamemodify(toplevel, ':p'):gsub('/$', '')
+  
+  -- Get the list of all worktrees and find the one matching our toplevel
   local worktrees = M.list_worktrees()
-
+  
   for _, wt in ipairs(worktrees) do
-    -- Normalize paths for comparison
-    local wt_path = vim.fn.resolve(wt.path)
-    local current_path = vim.fn.resolve(cwd)
-
-    -- Check if cwd is within this worktree
-    if current_path:sub(1, #wt_path) == wt_path then
+    if wt.path == toplevel then
       return wt
     end
   end
-
+  
   return nil
 end
 
