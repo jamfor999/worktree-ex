@@ -216,4 +216,47 @@ function M.create_worktree()
   end)
 end
 
+-- Check if opened in a bare repository and prompt for first worktree
+function M.check_bare_repo()
+  -- Only run if we're in a bare repository
+  if not git.is_bare_repo() then
+    return
+  end
+
+  -- Check if any non-bare worktrees exist
+  local worktrees = git.list_worktrees()
+  local has_worktrees = false
+  for _, wt in ipairs(worktrees) do
+    if not wt.is_bare then
+      has_worktrees = true
+      break
+    end
+  end
+
+  -- If worktrees already exist, don't prompt
+  if has_worktrees then
+    return
+  end
+
+  -- Prompt to create first worktree
+  vim.schedule(function()
+    ui.show_bare_repo_worktree_prompt(function(path, branch)
+      if path and branch then
+        -- Switch to the newly created worktree
+        vim.cmd('cd ' .. vim.fn.fnameescape(path))
+        
+        -- Refresh file explorer if neo-tree is loaded
+        local ok, neotree = pcall(require, 'neo-tree.command')
+        if ok then
+          vim.schedule(function()
+            vim.cmd('Neotree show')
+          end)
+        end
+        
+        vim.notify('Switched to new worktree: ' .. branch, vim.log.levels.INFO)
+      end
+    end)
+  end)
+end
+
 return M

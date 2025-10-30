@@ -20,6 +20,15 @@ function M.is_git_repo()
   return result ~= nil
 end
 
+-- Check if current directory is a bare repository
+function M.is_bare_repo()
+  local result = exec_git({ 'rev-parse', '--is-bare-repository' })
+  if result then
+    return vim.trim(result) == 'true'
+  end
+  return false
+end
+
 -- Get the root of the git repository
 function M.get_git_root()
   local result = exec_git({ 'rev-parse', '--show-toplevel' })

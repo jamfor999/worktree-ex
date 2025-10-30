@@ -60,6 +60,49 @@ function M.show_worktree_selector(callback)
   end)
 end
 
+-- Show UI to create first worktree in a bare repository
+function M.show_bare_repo_worktree_prompt(callback)
+  vim.ui.select({ 'Yes', 'No' }, {
+    prompt = 'Bare repository detected. Create first worktree?',
+  }, function(choice)
+    if choice ~= 'Yes' then
+      callback(nil, nil)
+      return
+    end
+
+    -- Ask for worktree name
+    vim.ui.input({
+      prompt = 'Worktree name: ',
+      default = 'main',
+    }, function(path)
+      if not path or path == '' then
+        callback(nil, nil)
+        return
+      end
+
+      -- Ask for branch name
+      vim.ui.input({
+        prompt = 'Branch name: ',
+        default = 'main',
+      }, function(branch)
+        if not branch or branch == '' then
+          callback(nil, nil)
+          return
+        end
+
+        -- Execute the creation
+        local success, result = git.create_worktree(path, branch, true)
+        if success then
+          callback(result.path, branch)
+        else
+          vim.notify('Failed to create worktree: ' .. (result or 'unknown error'), vim.log.levels.ERROR)
+          callback(nil, nil)
+        end
+      end)
+    end)
+  end)
+end
+
 -- Show UI to create a new worktree
 function M.show_create_worktree_ui(callback)
   -- First, ask for the worktree name
