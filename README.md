@@ -8,7 +8,8 @@ An intelligent Neovim plugin for seamless git worktree management. Easily switch
 - **Seamless Switching**: Switch between worktrees with a simple keymap
 - **Buffer Remapping**: Automatically updates open buffers to point to files in the new worktree
 - **Easy Creation**: Create new worktrees with an interactive UI
-- **Statusline Integration**: Shows current branch with a git icon (supports lualine and heirline)
+- **Statusline Integration**: Shows current branch with git icon (lualine/heirline/custom)
+- **Click-to-Switch**: Optional click handler override for AstroNvim statusline
 - **File Explorer Support**: Automatically refreshes neo-tree when switching worktrees
 - **User Commands**: Provides `:WorktreeSwitch`, `:WorktreeCreate`, and `:WorktreeList` commands
 
@@ -63,8 +64,10 @@ require('worktree').setup({
   auto_remap_buffers = true,
   -- Show notifications
   notify = true,
-  -- Enable statusline component
-  enable_statusline = true,
+  -- Enable statusline auto-refresh (set to true if you use the statusline component)
+  enable_statusline = false,
+  -- Try to override AstroNvim's git branch click handler (experimental)
+  override_astronvim_click = false,
 })
 ```
 
@@ -110,7 +113,9 @@ This will print all worktrees with their branches and paths, marking the current
 
 ### Statusline Integration
 
-The plugin provides a statusline component that shows the current branch with a git icon.
+The plugin provides statusline components that show the current branch with a git icon.
+
+**Important**: Set `enable_statusline = true` in your config when using any statusline integration.
 
 #### Lualine Integration
 
@@ -120,37 +125,61 @@ Add the worktree component to your lualine config:
 require('lualine').setup {
   sections = {
     lualine_b = {
-      'branch',  -- You can replace this with the worktree component
-      -- OR add it separately:
+      -- Replace the default branch component with worktree
       require('worktree').statusline.lualine_component(),
+      -- Or add it in addition to the default branch
     },
-    -- or in any other section:
-    lualine_x = {
-      require('worktree').statusline.lualine_component(),
-    },
+    -- or in any other section
   },
 }
 ```
 
-Clicking on the statusline component will open the worktree selector.
+The component supports click-to-switch by default. To disable:
+
+```lua
+require('worktree').statusline.lualine_component({ enable_click = false })
+```
 
 #### Heirline Integration
 
-```lua
-local worktree = require('worktree')
+Add the worktree component to your heirline config:
 
--- Add to your heirline config
-local WorktreeComponent = worktree.statusline.heirline_component()
+```lua
+local worktree_component = require('worktree').statusline.heirline_component()
+
+-- Add to your statusline config
+-- Example: table.insert(statusline, worktree_component)
 ```
+
+The component supports click-to-switch by default. To disable:
+
+```lua
+require('worktree').statusline.heirline_component({ enable_click = false })
+```
+
+#### AstroNvim Integration
+
+For AstroNvim users, you can optionally override the default git branch click behavior:
+
+```lua
+require('worktree').setup({
+  enable_statusline = true,
+  override_astronvim_click = true,  -- Clicking branch will open worktree switcher
+})
+```
+
+This will make clicking on the git branch in the statusline open the worktree switcher instead of the default AstroNvim behavior.
 
 #### Custom Statusline
 
-For other statusline plugins or custom statuslines:
+For any statusline plugin or custom statuslines:
 
 ```lua
 local statusline_text = require('worktree').statusline.get_statusline_component()
 -- Returns a string like " main" with the branch icon
 ```
+
+For a complete AstroNvim example, see `examples/astronvim-simple.lua`.
 
 ### Manual API Usage
 
@@ -276,10 +305,17 @@ Make sure `auto_remap_buffers` is enabled in your config. If issues persist, che
 
 ### Statusline not showing branch
 
-Make sure:
-- You're in a git repository
-- The statusline is configured correctly with your statusline plugin
-- `enable_statusline` is `true` in the config
+If you want to use the statusline component:
+- Make sure you're in a git repository
+- Add the statusline component to your statusline config (see examples above)
+- Set `enable_statusline = true` in the plugin config
+
+### Click handler not working
+
+If the click handler doesn't work:
+- Make sure your statusline plugin supports click handlers
+- For AstroNvim, try enabling `override_astronvim_click = true`
+- The override happens after a 1-second delay to ensure heirline is loaded
 
 ### Neo-tree not refreshing
 

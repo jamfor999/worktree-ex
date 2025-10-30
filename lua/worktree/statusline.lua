@@ -45,48 +45,6 @@ function M.get_statusline_component()
   return string.format('%s %s', icon, branch)
 end
 
--- Set up click handler for statusline (if supported by your statusline plugin)
-function M.setup_click_handler()
-  -- Create a function that can be called when clicking the statusline
-  vim.api.nvim_create_user_command('WorktreeStatuslineClick', function()
-    require('worktree').switch_worktree()
-  end, {})
-end
-
--- For integration with lualine
-function M.lualine_component()
-  return {
-    function()
-      return M.get_statusline_component()
-    end,
-    on_click = function()
-      require('worktree').switch_worktree()
-    end,
-  }
-end
-
--- For integration with heirline
-function M.heirline_component()
-  local conditions = require('heirline.conditions')
-
-  return {
-    condition = conditions.is_git_repo,
-    init = function(self)
-      self.branch = get_cached_branch()
-      self.icon = get_branch_icon()
-    end,
-    provider = function(self)
-      return string.format(' %s %s ', self.icon, self.branch or '')
-    end,
-    on_click = {
-      callback = function()
-        require('worktree').switch_worktree()
-      end,
-      name = 'worktree_click',
-    },
-  }
-end
-
 -- Auto-refresh statusline when changing directories
 function M.setup_auto_refresh()
   vim.api.nvim_create_autocmd({ 'DirChanged', 'BufEnter' }, {
@@ -100,6 +58,117 @@ function M.setup_auto_refresh()
       vim.cmd('redrawstatus')
     end,
   })
+end
+
+-- For integration with lualine
+function M.lualine_component(opts)
+  opts = opts or {}
+  local enable_click = opts.enable_click ~= false -- default true
+  
+  local component = {
+    function()
+      return M.get_statusline_component()
+    end,
+    color = opts.color,
+    icon = opts.icon,
+  }
+  
+  if enable_click then
+    component.on_click = function()
+      require('worktree').switch_worktree()
+    end
+  end
+  
+  return component
+end
+
+-- For integration with heirline (creates a standalone component)
+function M.heirline_component(opts)
+  opts = opts or {}
+  local enable_click = opts.enable_click ~= false -- default true
+  
+  local component = {
+    condition = function()
+      return git.is_git_repo()
+    end,
+    init = function(self)
+      self.branch = get_cached_branch()
+      self.icon = get_branch_icon()
+    end,
+    provider = function(self)
+      if not self.branch then return '' end
+      return string.format(' %s %s ', self.icon, self.branch)
+    end,
+    hl = opts.hl or { fg = 'git_branch', bold = true },
+    update = { 'DirChanged', 'BufEnter' },
+  }
+  
+  if enable_click then
+    component.on_click = {
+      callback = function()
+        require('worktree').switch_worktree()
+      end,
+      name = 'worktree_branch_click',
+    }
+  end
+  
+  return component
+end
+
+-- Safely override the git_branch component's on_click in heirline/AstroNvim
+-- This is optional and will only work if the statusline structure is compatible
+function M.try_override_astronvim_click()
+  -- Try to override after a delay to ensure heirline is loaded
+  vim.defer_fn(function()
+    -- Check if we're in AstroNvim with heirline
+    local ok_heirline, heirline = pcall(require, 'heirline')
+    local ok_astro = pcall(require, 'astroui.status')
+    
+    if not (ok_heirline and ok_astro) then
+      return -- Not in AstroNvim, nothing to do
+    end
+    
+    local statusline = heirline.statusline
+    if not statusline then return end
+    
+    -- Recursively search for git_branch components and override their on_click
+    local function override_component(component)
+      if type(component) ~= 'table' then return end
+      
+      -- Check if this looks like a git_branch component
+      -- We'll look for components that have specific characteristics
+      if component.on_click and type(component.on_click) == 'table' then
+        -- Check if the component has git-related highlighting
+        local hl = component.hl
+        if type(hl) == 'table' and (hl.fg == 'git_branch' or hl.fg == 'git_branch_fg') then
+          -- Override the click callback
+          component.on_click.callback = function()
+            require('worktree').switch_worktree()
+          end
+          component.on_click.name = 'worktree_override_click'
+        elseif type(hl) == 'function' then
+          -- hl is a function, we need to be more careful
+          -- We'll wrap the on_click only if it exists
+          local original_callback = component.on_click.callback
+          component.on_click.callback = function(...)
+            -- Try to determine if this is a git branch component by calling the original
+            -- If it errors or doesn't work, fall back to worktree
+            local ok = pcall(original_callback, ...)
+            if not ok then
+              require('worktree').switch_worktree()
+            end
+          end
+        end
+      end
+      
+      -- Recursively check nested components
+      for _, child in ipairs(component) do
+        override_component(child)
+      end
+    end
+    
+    override_component(statusline)
+  end, 1000) -- 1 second delay to ensure everything is loaded
 end
 
 return M

@@ -14,8 +14,10 @@ M.config = {
   auto_remap_buffers = true,
   -- Show notifications
   notify = true,
-  -- Enable statusline component
-  enable_statusline = true,
+  -- Enable statusline component auto-refresh
+  enable_statusline = false,
+  -- Try to override AstroNvim's git branch click handler (experimental)
+  override_astronvim_click = false,
 }
 
 -- Setup function to be called by user
@@ -31,10 +33,14 @@ function M.setup(opts)
     M.create_worktree()
   end, { desc = 'Create new worktree' })
 
-  -- Set up statusline
+  -- Set up statusline auto-refresh if enabled
   if M.config.enable_statusline then
     statusline.setup_auto_refresh()
-    statusline.setup_click_handler()
+  end
+
+  -- Optionally try to override AstroNvim's git branch click handler
+  if M.config.override_astronvim_click then
+    statusline.try_override_astronvim_click()
   end
 end
 
