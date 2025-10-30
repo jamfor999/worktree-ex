@@ -71,157 +71,78 @@ function M.switch_worktree(worktree_path)
   end
 end
 
--- Get the buffer list storage directory
-local function get_bufferlist_dir()
+-- Get the session storage directory
+local function get_session_dir()
   local config_home = os.getenv('XDG_CONFIG_HOME') or (os.getenv('HOME') .. '/.config')
-  return config_home .. '/worktree-ex/bufferlist'
+  return config_home .. '/worktree-ex/sessions'
 end
 
 -- Get a safe filename for a worktree path
-local function get_bufferlist_filename(worktree_path)
+local function get_session_filename(worktree_path)
   -- Create a safe filename from the worktree path
   local filename = worktree_path:gsub('/', '_'):gsub('^_', '')
-  return get_bufferlist_dir() .. '/' .. filename .. '.json'
+  return get_session_dir() .. '/' .. filename .. '.vim'
 end
 
--- Save current buffer list for a worktree
+-- Save current session for a worktree
 function M._save_buffer_list(worktree_path)
   print('[worktree] DEBUG: _save_buffer_list called for path: ' .. worktree_path)
-  local buffers = {}
-  
-  -- Collect all valid file buffers from this worktree
-  local all_bufs = vim.api.nvim_list_bufs()
-  print('[worktree] DEBUG: Total buffers: ' .. #all_bufs)
-  
-  for _, bufnr in ipairs(all_bufs) do
-    if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
-      local buf_name = vim.api.nvim_buf_get_name(bufnr)
-      print('[worktree] DEBUG: Checking buffer ' .. bufnr .. ': ' .. (buf_name ~= '' and buf_name or '<unnamed>'))
-      
-      -- Only save buffers that are actual files within the worktree
-      if buf_name ~= '' and buf_name:sub(1, #worktree_path) == worktree_path then
-        local rel_path = buf_name:sub(#worktree_path + 1)
-        if rel_path:sub(1, 1) == '/' then
-          rel_path = rel_path:sub(2)
-        end
-        
-        print('[worktree] DEBUG: Adding buffer to save list: ' .. rel_path)
-        table.insert(buffers, {
-          path = rel_path,
-          cursor = vim.api.nvim_buf_get_mark(bufnr, '"'),
-        })
-      else
-        print('[worktree] DEBUG: Skipping buffer (not in worktree or unnamed)')
-      end
-    end
-  end
-  
-  print('[worktree] DEBUG: Total buffers to save: ' .. #buffers)
   
   -- Create directory if it doesn't exist
-  local dir = get_bufferlist_dir()
+  local dir = get_session_dir()
   vim.fn.mkdir(dir, 'p')
-  print('[worktree] DEBUG: Buffer list directory: ' .. dir)
+  print('[worktree] DEBUG: Session directory: ' .. dir)
   
-  -- Write buffer list to file
-  local filename = get_bufferlist_filename(worktree_path)
-  print('[worktree] DEBUG: Writing to file: ' .. filename)
-  local file = io.open(filename, 'w')
-  if file then
-    local json_content = vim.json.encode(buffers)
-    print('[worktree] DEBUG: JSON content: ' .. json_content)
-    file:write(json_content)
-    file:close()
-    print('[worktree] DEBUG: Successfully wrote buffer list')
+  -- Get session filename
+  local filename = get_session_filename(worktree_path)
+  print('[worktree] DEBUG: Saving session to: ' .. filename)
+  
+  -- Save session options
+  local saved_sessionoptions = vim.o.sessionoptions
+  -- We want to save: buffers, curdir, folds, help, tabpages, winsize, winpos
+  -- We DON'T want: blank, globals, localoptions, options, resize, terminal
+  vim.o.sessionoptions = 'buffers,curdir,folds,tabpages,winsize,winpos'
+  
+  -- Save the session
+  local ok, err = pcall(function()
+    vim.cmd('mksession! ' .. vim.fn.fnameescape(filename))
+  end)
+  
+  -- Restore session options
+  vim.o.sessionoptions = saved_sessionoptions
+  
+  if ok then
+    print('[worktree] DEBUG: Successfully saved session')
   else
-    print('[worktree] ERROR: Failed to open file for writing: ' .. filename)
+    print('[worktree] ERROR: Failed to save session: ' .. tostring(err))
   end
 end
 
--- Restore buffer list for a worktree
+-- Restore session for a worktree
 function M._restore_buffer_list(worktree_path)
   print('[worktree] DEBUG: _restore_buffer_list called for path: ' .. worktree_path)
-  local filename = get_bufferlist_filename(worktree_path)
-  print('[worktree] DEBUG: Looking for buffer list file: ' .. filename)
+  local filename = get_session_filename(worktree_path)
+  print('[worktree] DEBUG: Looking for session file: ' .. filename)
   
-  -- Check if buffer list file exists
+  -- Check if session file exists
   if vim.fn.filereadable(filename) ~= 1 then
-    print('[worktree] DEBUG: No buffer list file found, skipping restore')
-    return
+    print('[worktree] DEBUG: No session file found, skipping restore')
+    return false
   end
   
-  print('[worktree] DEBUG: Buffer list file exists, reading...')
+  print('[worktree] DEBUG: Session file exists, restoring...')
   
-  -- Read and parse buffer list
-  local file = io.open(filename, 'r')
-  if not file then
-    print('[worktree] ERROR: Failed to open buffer list file')
-    return
-  end
+  -- Source the session file
+  local ok, err = pcall(function()
+    vim.cmd('source ' .. vim.fn.fnameescape(filename))
+  end)
   
-  local content = file:read('*a')
-  file:close()
-  print('[worktree] DEBUG: File content: ' .. content)
-  
-  local ok, buffers = pcall(vim.json.decode, content)
-  if not ok or not buffers then
-    print('[worktree] ERROR: Failed to parse buffer list JSON: ' .. (ok and 'nil buffers' or buffers))
-    return
-  end
-  
-  print('[worktree] DEBUG: Parsed ' .. #buffers .. ' buffers from file')
-  
-  -- Close all existing buffers except special ones
-  local closed_count = 0
-  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_valid(bufnr) then
-      local buf_name = vim.api.nvim_buf_get_name(bufnr)
-      local buftype = vim.api.nvim_buf_get_option(bufnr, 'buftype')
-      
-      -- Only close file buffers
-      if buftype == '' and buf_name ~= '' then
-        local buf_modified = vim.api.nvim_buf_get_option(bufnr, 'modified')
-        if not buf_modified then
-          print('[worktree] DEBUG: Closing buffer ' .. bufnr .. ': ' .. buf_name)
-          pcall(vim.api.nvim_buf_delete, bufnr, { force = false })
-          closed_count = closed_count + 1
-        else
-          print('[worktree] DEBUG: Skipping modified buffer ' .. bufnr .. ': ' .. buf_name)
-        end
-      end
-    end
-  end
-  print('[worktree] DEBUG: Closed ' .. closed_count .. ' buffers')
-  
-  -- Restore buffers
-  local restored_count = 0
-  for _, buf_info in ipairs(buffers) do
-    local full_path = worktree_path .. '/' .. buf_info.path
-    print('[worktree] DEBUG: Attempting to restore buffer: ' .. full_path)
-    
-    if vim.fn.filereadable(full_path) == 1 then
-      -- Open the buffer
-      vim.cmd('badd ' .. vim.fn.fnameescape(full_path))
-      print('[worktree] DEBUG: Successfully added buffer: ' .. buf_info.path)
-      restored_count = restored_count + 1
-    else
-      print('[worktree] DEBUG: File not readable, skipping: ' .. full_path)
-    end
-  end
-  print('[worktree] DEBUG: Restored ' .. restored_count .. ' buffers')
-  
-  -- Open the first buffer in the current window if any were restored
-  if #buffers > 0 then
-    local first_path = worktree_path .. '/' .. buffers[1].path
-    print('[worktree] DEBUG: Opening first buffer in window: ' .. first_path)
-    if vim.fn.filereadable(first_path) == 1 then
-      vim.cmd('edit ' .. vim.fn.fnameescape(first_path))
-      print('[worktree] DEBUG: Successfully opened first buffer')
-    else
-      print('[worktree] DEBUG: First buffer not readable')
-    end
+  if ok then
+    print('[worktree] DEBUG: Successfully restored session')
+    return true
   else
-    print('[worktree] DEBUG: No buffers to open in window')
+    print('[worktree] ERROR: Failed to restore session: ' .. tostring(err))
+    return false
   end
 end
 
@@ -262,21 +183,24 @@ function M._do_switch(new_worktree_path)
   print('[worktree] DEBUG: Current directory after cd: ' .. vim.fn.getcwd())
 
   -- Restore buffer list for new worktree
+  local restored = false
   if M.config.auto_persist_buffers then
-    print('[worktree] DEBUG: Restoring buffer list for new worktree')
-    M._restore_buffer_list(new_worktree_path)
+    print('[worktree] DEBUG: Restoring session for new worktree')
+    restored = M._restore_buffer_list(new_worktree_path)
   end
 
-  -- Refresh file explorer if neo-tree is loaded
-  local ok, neotree = pcall(require, 'neo-tree.command')
-  if ok then
-    print('[worktree] DEBUG: Refreshing neo-tree')
-    vim.cmd('Neotree close')
-    vim.schedule(function()
-      vim.cmd('Neotree show')
-    end)
+  -- Only refresh neo-tree if session wasn't restored (session handles neo-tree state)
+  if not restored then
+    print('[worktree] DEBUG: No session restored, manually refreshing neo-tree')
+    local ok, neotree = pcall(require, 'neo-tree.command')
+    if ok then
+      vim.cmd('Neotree close')
+      vim.schedule(function()
+        vim.cmd('Neotree show')
+      end)
+    end
   else
-    print('[worktree] DEBUG: neo-tree not loaded')
+    print('[worktree] DEBUG: Session restored, neo-tree state should be preserved')
   end
 
   if M.config.notify then
@@ -398,23 +322,23 @@ function M.check_auto_restore_buffers()
     return
   end
   
-  -- Check if persisted buffer list exists
-  local filename = get_bufferlist_filename(current.path)
-  print('[worktree] DEBUG: Checking for buffer list file: ' .. filename)
+  -- Check if persisted session exists
+  local filename = get_session_filename(current.path)
+  print('[worktree] DEBUG: Checking for session file: ' .. filename)
   if vim.fn.filereadable(filename) ~= 1 then
-    -- No persisted buffers, let default behavior happen
-    print('[worktree] DEBUG: No persisted buffer list found')
+    -- No persisted session, let default behavior happen
+    print('[worktree] DEBUG: No persisted session found')
     return
   end
   
-  print('[worktree] DEBUG: Found persisted buffer list, scheduling restore')
-  -- We have persisted buffers - restore them instead of showing directory listing
+  print('[worktree] DEBUG: Found persisted session, scheduling restore')
+  -- We have persisted session - restore it instead of showing directory listing
   vim.schedule(function()
     M._restore_buffer_list(current.path)
   end)
 end
 
--- Clear the persisted buffer list for the current worktree
+-- Clear the persisted session for the current worktree
 function M.clear_buffer_list()
   local current = git.get_current_worktree()
   if not current then
@@ -422,14 +346,14 @@ function M.clear_buffer_list()
     return
   end
   
-  local filename = get_bufferlist_filename(current.path)
+  local filename = get_session_filename(current.path)
   
-  -- Delete the buffer list file if it exists
+  -- Delete the session file if it exists
   if vim.fn.filereadable(filename) == 1 then
     os.remove(filename)
-    vim.notify('Cleared buffer list for worktree: ' .. (current.branch or current.path), vim.log.levels.INFO)
+    vim.notify('Cleared session for worktree: ' .. (current.branch or current.path), vim.log.levels.INFO)
   else
-    vim.notify('No buffer list found for current worktree', vim.log.levels.INFO)
+    vim.notify('No session found for current worktree', vim.log.levels.INFO)
   end
   
   -- Quit Neovim
