@@ -1,6 +1,7 @@
 # worktree.nvim for AstroNvim
 
 Complete guide for installing and using worktree.nvim with AstroNvim.
+master branch
 
 ## Quick Install
 
