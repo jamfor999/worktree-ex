@@ -30,7 +30,7 @@ function M.get_git_root()
 end
 
 -- Parse worktree list output
-local function parse_worktree_list(output, git_common_dir)
+local function parse_worktree_list(output)
   local worktrees = {}
 
   for line in output:gmatch('[^\r\n]+') do
@@ -45,14 +45,7 @@ local function parse_worktree_list(output, git_common_dir)
       -- Remove any trailing annotations like (bare) or (detached)
       path = path:gsub('%s*%([^)]+%)$', '')
 
-      -- If path is relative, resolve it relative to the git common dir
-      if not path:match('^/') and not path:match('^~') then
-        -- Relative path - resolve it relative to git dir parent
-        local git_parent = vim.fn.fnamemodify(git_common_dir, ':h')
-        path = git_parent .. '/' .. path
-      end
-
-      -- Now resolve to clean absolute path
+      -- Git should give us absolute paths, but resolve just in case
       path = vim.fn.fnamemodify(path, ':p'):gsub('/$', '')
 
       table.insert(worktrees, {
@@ -91,22 +84,12 @@ function M.list_worktrees()
     return {}
   end
 
-  -- Get the git common directory to resolve relative paths
-  local git_dir_output = exec_git({ 'rev-parse', '--git-common-dir' })
-  local git_common_dir = git_dir_output and vim.trim(git_dir_output) or vim.fn.getcwd()
-
-  -- Make git_common_dir absolute if it's relative
-  if not git_common_dir:match('^/') then
-    git_common_dir = vim.fn.getcwd() .. '/' .. git_common_dir
-  end
-  git_common_dir = vim.fn.fnamemodify(git_common_dir, ':p'):gsub('/$', '')
-
   local output = exec_git({ 'worktree', 'list', '--porcelain' })
   if not output then
     return {}
   end
 
-  return parse_worktree_list(output, git_common_dir)
+  return parse_worktree_list(output)
 end
 
 -- Get the current worktree
@@ -144,26 +127,33 @@ function M.get_current_branch()
   return nil
 end
 
+-- Get the bare repository path from worktree list
+local function get_bare_repo_path()
+  local worktrees = M.list_worktrees()
+  for _, wt in ipairs(worktrees) do
+    if wt.is_bare then
+      return wt.path
+    end
+  end
+  return nil
+end
+
 -- Create a new worktree
 function M.create_worktree(path, branch, create_branch)
   if not M.is_git_repo() then
     return false, 'Not in a git repository'
   end
 
-  -- Get the git common directory (the bare repo or main .git dir)
-  local git_dir_output = exec_git({ 'rev-parse', '--git-common-dir' })
-  local git_common_dir = git_dir_output and vim.trim(git_dir_output) or vim.fn.getcwd()
-
-  -- Make git_common_dir absolute if it's relative
-  if not git_common_dir:match('^/') then
-    git_common_dir = vim.fn.getcwd() .. '/' .. git_common_dir
+  -- Get the bare repo path
+  local bare_repo = get_bare_repo_path()
+  if not bare_repo then
+    return false, 'Cannot find bare repository'
   end
-  git_common_dir = vim.fn.fnamemodify(git_common_dir, ':p'):gsub('/$', '')
 
-  -- Expand path relative to git common directory's parent
+  -- Expand path relative to bare repository's parent
   if not path:match('^/') and not path:match('^~') then
-    -- Relative path, make it relative to git common dir parent
-    path = vim.fn.fnamemodify(git_common_dir, ':h') .. '/' .. path
+    -- Relative path, make it relative to bare repo parent
+    path = vim.fn.fnamemodify(bare_repo, ':h') .. '/' .. path
   end
 
   path = vim.fn.expand(path)
