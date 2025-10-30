@@ -62,10 +62,10 @@ end
 
 -- Show UI to create a new worktree
 function M.show_create_worktree_ui(callback)
-  -- First, ask for the path
+  -- First, ask for the worktree name
   vim.ui.input({
-    prompt = 'Worktree path (relative to repo parent): ',
-    default = '../',
+    prompt = 'Worktree name: ',
+    default = '',
   }, function(path)
     if not path or path == '' then
       callback(nil, nil)
