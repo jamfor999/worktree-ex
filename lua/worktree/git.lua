@@ -29,48 +29,46 @@ function M.get_git_root()
   return nil
 end
 
--- Parse worktree list output
+-- Parse worktree list output (porcelain format for reliable parsing)
 local function parse_worktree_list(output)
   local worktrees = {}
+  local current_worktree = nil
 
   for line in output:gmatch('[^\r\n]+') do
-    -- Format: worktree /path/to/worktree
-    --         HEAD abcd1234
-    --         branch refs/heads/branch-name
-    -- or
-    -- worktree /path/to/worktree (bare)
+    -- Porcelain format:
+    -- worktree /path/to/worktree
+    -- HEAD commit_hash
+    -- branch refs/heads/branch_name
+    -- bare (if bare repo)
+    -- (blank line between worktrees)
 
     local path = line:match('^worktree%s+(.+)$')
     if path then
-      -- Remove any trailing annotations like (bare) or (detached)
-      path = path:gsub('%s*%([^)]+%)$', '')
-
-      -- Git should give us absolute paths, but resolve just in case
-      path = vim.fn.fnamemodify(path, ':p'):gsub('/$', '')
-
-      table.insert(worktrees, {
-        path = path,
+      -- New worktree entry
+      current_worktree = {
+        path = vim.fn.fnamemodify(path, ':p'):gsub('/$', ''),
         branch = nil,
         head = nil,
-        is_bare = line:match('%(bare%)') ~= nil,
+        is_bare = false,
         is_detached = false,
-      })
-    elseif #worktrees > 0 then
-      -- This is a detail line for the last worktree
-      local current = worktrees[#worktrees]
-
-      local head = line:match('^%s*HEAD%s+(.+)$')
-      if head then
-        current.head = head
-      end
-
-      local branch = line:match('^%s*branch%s+refs/heads/(.+)$')
-      if branch then
-        current.branch = branch
-      end
-
-      if line:match('^%s*detached$') then
-        current.is_detached = true
+      }
+      table.insert(worktrees, current_worktree)
+    elseif current_worktree then
+      -- Details for current worktree
+      if line:match('^bare$') then
+        current_worktree.is_bare = true
+      elseif line:match('^detached$') then
+        current_worktree.is_detached = true
+      else
+        local head = line:match('^HEAD%s+(.+)$')
+        if head then
+          current_worktree.head = head
+        else
+          local branch = line:match('^branch%s+refs/heads/(.+)$')
+          if branch then
+            current_worktree.branch = branch
+          end
+        end
       end
     end
   end
