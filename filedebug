@@ -1,0 +1,162 @@
+
+
+[worktree] DEBUG: _do_switch called with path: /Users/jamesforward/spondle
+[worktree] DEBUG: Current worktree: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Current branch: master
+[worktree] DEBUG: Resolved target path: /Users/jamesforward/spondle
+[worktree] DEBUG: auto_persist_buffers = true
+[worktree] DEBUG: Saving buffer list for current worktree
+[worktree] DEBUG: _save_buffer_list called for path: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Total buffers: 6
+[worktree] DEBUG: Checking buffer 2: miniicons://2/filetype-match-scratch
+[worktree] DEBUG: Skipping buffer (not in worktree or unnamed)
+[worktree] DEBUG: Checking buffer 3: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1000]
+[worktree] DEBUG: Adding buffer to save list: neo-tree filesystem [1000]
+[worktree] DEBUG: Checking buffer 4: /Users/jamesforward/worktree-ex-main/README.md
+[worktree] DEBUG: Adding buffer to save list: README.md
+[worktree] DEBUG: Checking buffer 5: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1]
+[worktree] DEBUG: Adding buffer to save list: neo-tree filesystem [1]
+[worktree] DEBUG: Checking buffer 6: /Users/jamesforward/worktree-ex-main/LICENSE
+[worktree] DEBUG: Adding buffer to save list: LICENSE
+[worktree] DEBUG: Checking buffer 7: /Users/jamesforward/worktree-ex-main/examples/lazy-nvim-astronvim.lua
+[worktree] DEBUG: Adding buffer to save list: examples/lazy-nvim-astronvim.lua
+[worktree] DEBUG: Total buffers to save: 5
+[worktree] DEBUG: Buffer list directory: /Users/jamesforward/.config/worktree-ex/bufferlist
+[worktree] DEBUG: Writing to file: /Users/jamesforward/.config/worktree-ex/bufferlist/Users_jamesforward_worktree-ex-main.json
+[worktree] DEBUG: JSON content: [{"cursor":[7,0],"path":"neo-tree filesystem [1000]"},{"cursor":[1,0],"path":"README.md"},{"cursor":[1,0],"path":"neo-tree filesystem [1]"},{"cursor":[1,0],"path":"LICENSE"},{"cursor":[1,0],"path":"examples/lazy-nvim-astronvim.lua"}]
+[worktree] DEBUG: Successfully wrote buffer list
+[worktree] DEBUG: Changing directory to: /Users/jamesforward/spondle
+[worktree] DEBUG: Current directory after cd: /Users/jamesforward/spondle
+[worktree] DEBUG: Restoring buffer list for new worktree
+[worktree] DEBUG: _restore_buffer_list called for path: /Users/jamesforward/spondle
+[worktree] DEBUG: Looking for buffer list file: /Users/jamesforward/.config/worktree-ex/bufferlist/Users_jamesforward_spondle.json
+[worktree] DEBUG: Buffer list file exists, reading...
+[worktree] DEBUG: File content: [{"path":"neo-tree filesystem [1]","cursor":[1,0]}]
+[worktree] DEBUG: Parsed 1 buffers from file
+[worktree] DEBUG: Closing buffer 4: /Users/jamesforward/worktree-ex-main/README.md
+[worktree] DEBUG: Closing buffer 6: /Users/jamesforward/worktree-ex-main/LICENSE
+[worktree] DEBUG: Closing buffer 7: /Users/jamesforward/worktree-ex-main/examples/lazy-nvim-astronvim.lua
+[worktree] DEBUG: Closed 3 buffers
+[worktree] DEBUG: Attempting to restore buffer: /Users/jamesforward/spondle/neo-tree filesystem [1]
+[worktree] DEBUG: File not readable, skipping: /Users/jamesforward/spondle/neo-tree filesystem [1]
+[worktree] DEBUG: Restored 0 buffers
+[worktree] DEBUG: Opening first buffer in window: /Users/jamesforward/spondle/neo-tree filesystem [1]
+[worktree] DEBUG: First buffer not readable
+[worktree] DEBUG: Refreshing neo-tree
+[worktree] DEBUG: Switch complete to branch: spondle
+[worktree] DEBUG: _do_switch called with path: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Current worktree: /Users/jamesforward/spondle
+[worktree] DEBUG: Current branch: spondle
+[worktree] DEBUG: Resolved target path: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: auto_persist_buffers = true
+[worktree] DEBUG: Saving buffer list for current worktree
+[worktree] DEBUG: _save_buffer_list called for path: /Users/jamesforward/spondle
+[worktree] DEBUG: Total buffers: 3
+[worktree] DEBUG: Checking buffer 2: miniicons://2/filetype-match-scratch
+[worktree] DEBUG: Skipping buffer (not in worktree or unnamed)
+[worktree] DEBUG: Checking buffer 13: <unnamed>
+[worktree] DEBUG: Skipping buffer (not in worktree or unnamed)
+[worktree] DEBUG: Checking buffer 14: /Users/jamesforward/spondle/neo-tree filesystem [1]
+[worktree] DEBUG: Adding buffer to save list: neo-tree filesystem [1]
+[worktree] DEBUG: Total buffers to save: 1
+[worktree] DEBUG: Buffer list directory: /Users/jamesforward/.config/worktree-ex/bufferlist
+[worktree] DEBUG: Writing to file: /Users/jamesforward/.config/worktree-ex/bufferlist/Users_jamesforward_spondle.json
+[worktree] DEBUG: JSON content: [{"cursor":[1,0],"path":"neo-tree filesystem [1]"}]
+[worktree] DEBUG: Successfully wrote buffer list
+[worktree] DEBUG: Changing directory to: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Current directory after cd: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Restoring buffer list for new worktree
+[worktree] DEBUG: _restore_buffer_list called for path: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Looking for buffer list file: /Users/jamesforward/.config/worktree-ex/bufferlist/Users_jamesforward_worktree-ex-main.json
+[worktree] DEBUG: Buffer list file exists, reading...
+[worktree] DEBUG: File content: [{"cursor":[7,0],"path":"neo-tree filesystem [1000]"},{"cursor":[1,0],"path":"README.md"},{"cursor":[1,0],"path":"neo-tree filesystem [1]"},{"cursor":[1,0],"path":"LICENSE"},{"cursor":[1,0],"path":"examples/lazy-nvim-astronvim.lua"}]
+[worktree] DEBUG: Parsed 5 buffers from file
+[worktree] DEBUG: Closed 0 buffers
+[worktree] DEBUG: Attempting to restore buffer: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1000]
+[worktree] DEBUG: File not readable, skipping: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1000]
+[worktree] DEBUG: Attempting to restore buffer: /Users/jamesforward/worktree-ex-main/README.md
+[worktree] DEBUG: Successfully added buffer: README.md
+[worktree] DEBUG: Attempting to restore buffer: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1]
+[worktree] DEBUG: File not readable, skipping: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1]
+[worktree] DEBUG: Attempting to restore buffer: /Users/jamesforward/worktree-ex-main/LICENSE
+[worktree] DEBUG: Successfully added buffer: LICENSE
+[worktree] DEBUG: Attempting to restore buffer: /Users/jamesforward/worktree-ex-main/examples/lazy-nvim-astronvim.lua
+[worktree] DEBUG: Successfully added buffer: examples/lazy-nvim-astronvim.lua
+[worktree] DEBUG: Restored 3 buffers
+[worktree] DEBUG: Opening first buffer in window: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1000]
+[worktree] DEBUG: First buffer not readable
+[worktree] DEBUG: Refreshing neo-tree
+[worktree] DEBUG: Switch complete to branch: master
+[worktree] DEBUG: _do_switch called with path: /Users/jamesforward/spondle
+[worktree] DEBUG: Current worktree: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Current branch: master [worktree] DEBUG: Resolved target path: /Users/jamesforward/spondle [worktree] DEBUG: auto_persist_buffers = true [worktree] DEBUG: Saving buffer list for current worktree
+[worktree] DEBUG: _save_buffer_list called for path: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Total buffers: 6
+[worktree] DEBUG: Checking buffer 2: miniicons://2/filetype-match-scratch
+[worktree] DEBUG: Skipping buffer (not in worktree or unnamed)
+[worktree] DEBUG: Checking buffer 13: <unnamed>
+[worktree] DEBUG: Skipping buffer (not in worktree or unnamed)
+[worktree] DEBUG: Checking buffer 24: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1]
+[worktree] DEBUG: Adding buffer to save list: neo-tree filesystem [1]
+[worktree] DEBUG: Total buffers to save: 1
+[worktree] DEBUG: Buffer list directory: /Users/jamesforward/.config/worktree-ex/bufferlist
+[worktree] DEBUG: Writing to file: /Users/jamesforward/.config/worktree-ex/bufferlist/Users_jamesforward_worktree-ex-main.json
+[worktree] DEBUG: JSON content: [{"cursor":[1,0],"path":"neo-tree filesystem [1]"}]
+[worktree] DEBUG: Successfully wrote buffer list
+[worktree] DEBUG: Changing directory to: /Users/jamesforward/spondle
+[worktree] DEBUG: Current directory after cd: /Users/jamesforward/spondle
+[worktree] DEBUG: Restoring buffer list for new worktree
+[worktree] DEBUG: _restore_buffer_list called for path: /Users/jamesforward/spondle
+[worktree] DEBUG: Looking for buffer list file: /Users/jamesforward/.config/worktree-ex/bufferlist/Users_jamesforward_spondle.json
+[worktree] DEBUG: Buffer list file exists, reading...
+[worktree] DEBUG: File content: [{"cursor":[1,0],"path":"neo-tree filesystem [1]"}]
+[worktree] DEBUG: Parsed 1 buffers from file
+[worktree] DEBUG: Closing buffer 21: /Users/jamesforward/worktree-ex-main/README.md
+[worktree] DEBUG: Closing buffer 22: /Users/jamesforward/worktree-ex-main/LICENSE
+[worktree] DEBUG: Closing buffer 23: /Users/jamesforward/worktree-ex-main/examples/lazy-nvim-astronvim.lua
+[worktree] DEBUG: Closed 3 buffers
+[worktree] DEBUG: Attempting to restore buffer: /Users/jamesforward/spondle/neo-tree filesystem [1]
+[worktree] DEBUG: File not readable, skipping: /Users/jamesforward/spondle/neo-tree filesystem [1]
+[worktree] DEBUG: Restored 0 buffers
+[worktree] DEBUG: Opening first buffer in window: /Users/jamesforward/spondle/neo-tree filesystem [1]
+[worktree] DEBUG: First buffer not readable
+[worktree] DEBUG: Refreshing neo-tree
+[worktree] DEBUG: Switch complete to branch: spondle
+[worktree] DEBUG: _do_switch called with path: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Current worktree: /Users/jamesforward/spondle
+[worktree] DEBUG: Current branch: spondle
+[worktree] DEBUG: Resolved target path: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: auto_persist_buffers = true
+[worktree] DEBUG: Saving buffer list for current worktree
+[worktree] DEBUG: _save_buffer_list called for path: /Users/jamesforward/spondle
+[worktree] DEBUG: Total buffers: 4
+[worktree] DEBUG: Checking buffer 2: miniicons://2/filetype-match-scratch
+[worktree] DEBUG: Skipping buffer (not in worktree or unnamed)
+[worktree] DEBUG: Checking buffer 13: <unnamed>
+[worktree] DEBUG: Skipping buffer (not in worktree or unnamed)
+[worktree] DEBUG: Checking buffer 31: /Users/jamesforward/spondle/neo-tree filesystem [1]
+[worktree] DEBUG: Adding buffer to save list: neo-tree filesystem [1]
+[worktree] DEBUG: Checking buffer 32: <unnamed>
+[worktree] DEBUG: Skipping buffer (not in worktree or unnamed)
+[worktree] DEBUG: Total buffers to save: 1
+[worktree] DEBUG: Buffer list directory: /Users/jamesforward/.config/worktree-ex/bufferlist
+[worktree] DEBUG: Writing to file: /Users/jamesforward/.config/worktree-ex/bufferlist/Users_jamesforward_spondle.json
+[worktree] DEBUG: JSON content: [{"cursor":[1,0],"path":"neo-tree filesystem [1]"}]
+[worktree] DEBUG: Successfully wrote buffer list
+[worktree] DEBUG: Changing directory to: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Current directory after cd: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Restoring buffer list for new worktree
+[worktree] DEBUG: _restore_buffer_list called for path: /Users/jamesforward/worktree-ex-main
+[worktree] DEBUG: Looking for buffer list file: /Users/jamesforward/.config/worktree-ex/bufferlist/Users_jamesforward_worktree-ex-main.json
+[worktree] DEBUG: Buffer list file exists, reading...
+[worktree] DEBUG: File content: [{"cursor":[1,0],"path":"neo-tree filesystem [1]"}]
+[worktree] DEBUG: Parsed 1 buffers from file
+[worktree] DEBUG: Closed 0 buffers
+[worktree] DEBUG: Attempting to restore buffer: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1]
+[worktree] DEBUG: File not readable, skipping: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1]
+[worktree] DEBUG: Restored 0 buffers
+[worktree] DEBUG: Opening first buffer in window: /Users/jamesforward/worktree-ex-main/neo-tree filesystem [1]
+[worktree] DEBUG: First buffer not readable
+[worktree] DEBUG: Refreshing neo-tree
+[worktree] DEBUG: Switch complete to branch: master
+Already at oldest change

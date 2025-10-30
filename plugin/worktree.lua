@@ -54,3 +54,30 @@ end, { desc = 'List all worktrees' })
 vim.api.nvim_create_user_command('WorktreeBufferClear', function()
   require('worktree').clear_buffer_list()
 end, { desc = 'Clear persisted buffer list for current worktree and quit' })
+
+vim.api.nvim_create_user_command('WorktreeLogClear', function()
+  local config_home = os.getenv('XDG_CONFIG_HOME') or (os.getenv('HOME') .. '/.config')
+  local log_file = config_home .. '/worktree-ex/debug.log'
+
+  -- Delete the log file
+  if vim.fn.filereadable(log_file) == 1 then
+    os.remove(log_file)
+    vim.notify('Debug log cleared: ' .. log_file, vim.log.levels.INFO)
+  else
+    vim.notify('No debug log found', vim.log.levels.INFO)
+  end
+end, { desc = 'Clear the debug log file' })
+
+vim.api.nvim_create_user_command('WorktreeLogShow', function()
+  local config_home = os.getenv('XDG_CONFIG_HOME') or (os.getenv('HOME') .. '/.config')
+  local log_file = config_home .. '/worktree-ex/debug.log'
+
+  if vim.fn.filereadable(log_file) == 1 then
+    -- Open log file in a split
+    vim.cmd('split ' .. vim.fn.fnameescape(log_file))
+    -- Go to end of file
+    vim.cmd('normal! G')
+  else
+    vim.notify('No debug log found at: ' .. log_file, vim.log.levels.WARN)
+  end
+end, { desc = 'Show the debug log file' })
