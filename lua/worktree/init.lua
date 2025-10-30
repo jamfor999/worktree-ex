@@ -73,6 +73,9 @@ function M._do_switch(new_worktree_path)
     return
   end
 
+  -- Resolve the path to absolute path (handles .. and .)
+  new_worktree_path = vim.fn.fnamemodify(new_worktree_path, ':p'):gsub('/$', '')
+
   if current.path == new_worktree_path then
     vim.notify('Already in this worktree', vim.log.levels.INFO)
     return

@@ -45,6 +45,9 @@ local function parse_worktree_list(output)
       -- Remove any trailing annotations like (bare) or (detached)
       path = path:gsub('%s*%([^)]+%)$', '')
 
+      -- Resolve to absolute path to handle .. and .
+      path = vim.fn.fnamemodify(path, ':p'):gsub('/$', '')
+
       table.insert(worktrees, {
         path = path,
         branch = nil,
