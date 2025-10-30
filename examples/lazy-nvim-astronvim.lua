@@ -1,4 +1,4 @@
--- Simple AstroNvim configuration for worktree.nvim
+-- AstroNvim configuration for worktree.nvim using lazy.nvim
 -- Place this file in: ~/.config/nvim/lua/plugins/worktree.lua
 
 return {

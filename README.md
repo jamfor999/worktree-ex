@@ -16,35 +16,94 @@ master branch
 
 ## Installation
 
-### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
+### Using [lazy.nvim](https://github.com/folke/lazy.nvim) with AstroNvim
+
+This is the recommended configuration for AstroNvim users. Place this in `~/.config/nvim/lua/plugins/worktree.lua`:
 
 ```lua
-{
-  'yourusername/worktree.nvim',
-  config = function()
-    require('worktree').setup()
-  end,
+-- AstroNvim configuration for worktree.nvim using lazy.nvim
+-- Place this file in: ~/.config/nvim/lua/plugins/worktree.lua
+
+return {
+  {
+    "jamfor999/worktree-ex",
+    event = "VeryLazy",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-telescope/telescope.nvim",
+      "nvim-telescope/telescope-ui-select.nvim",
+    },
+    config = function()
+      require("worktree").setup({
+        keymaps = {
+          switch = "<leader>gws",
+          create = "<leader>gwc",
+        },
+        auto_remap_buffers = true,
+        notify = true,
+        enable_statusline = true,
+        -- Try to override AstroNvim's git branch click to use worktree switcher
+        override_astronvim_click = true,
+      })
+    end,
+    keys = {
+      {
+        "<leader>gws",
+        function() require("worktree").switch_worktree() end,
+        desc = "Switch worktree",
+      },
+      {
+        "<leader>gwc",
+        function() require("worktree").create_worktree() end,
+        desc = "Create worktree",
+      },
+    },
+  },
+
+  -- Setup telescope ui-select for better worktree picker
+  {
+    "nvim-telescope/telescope.nvim",
+    dependencies = {
+      "nvim-telescope/telescope-ui-select.nvim",
+    },
+    opts = function(_, opts)
+      local telescope_config = opts or {}
+      telescope_config.extensions = telescope_config.extensions or {}
+      telescope_config.extensions["ui-select"] = {
+        require("telescope.themes").get_dropdown({
+          previewer = false,
+          initial_mode = "normal",
+        }),
+      }
+      return telescope_config
+    end,
+    config = function(_, opts)
+      local telescope = require("telescope")
+      telescope.setup(opts)
+      telescope.load_extension("ui-select")
+    end,
+  },
+
+  -- Add which-key descriptions
+  {
+    "folke/which-key.nvim",
+    optional = true,
+    opts = function(_, opts)
+      if not opts.spec then opts.spec = {} end
+      table.insert(opts.spec, {
+        { "<leader>gw", group = "Worktree", icon = "" },
+      })
+      return opts
+    end,
+  },
 }
 ```
 
-### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
+See the complete example in [examples/lazy-nvim-astronvim.lua](examples/lazy-nvim-astronvim.lua).
 
-```lua
-use {
-  'yourusername/worktree.nvim',
-  config = function()
-    require('worktree').setup()
-  end,
-}
-```
+### For other plugin managers
 
-### Using [vim-plug](https://github.com/junegunn/vim-plug)
-
-```vim
-Plug 'yourusername/worktree.nvim'
-```
-
-Then in your config:
+If you're not using AstroNvim or want a simpler setup, you can use the basic configuration:
 
 ```lua
 require('worktree').setup()
@@ -52,25 +111,46 @@ require('worktree').setup()
 
 ## Configuration
 
-Default configuration:
+The plugin accepts the following configuration options:
 
 ```lua
 require('worktree').setup({
-  -- Keymaps
+  -- Keymaps for switching and creating worktrees
   keymaps = {
-    switch = '<leader>gws',  -- Switch worktree
-    create = '<leader>gwc',  -- Create new worktree
+    switch = '<leader>gws',  -- Opens worktree selector
+    create = '<leader>gwc',  -- Opens worktree creation UI
   },
+  
   -- Automatically remap buffers when switching worktrees
+  -- When true, open buffers are updated to point to files in the new worktree
   auto_remap_buffers = true,
-  -- Show notifications
+  
+  -- Show notifications when switching/creating worktrees
   notify = true,
-  -- Enable statusline auto-refresh (set to true if you use the statusline component)
+  
+  -- Enable statusline auto-refresh
+  -- Set to true if you want the git branch in your statusline to update when switching
   enable_statusline = false,
-  -- Try to override AstroNvim's git branch click handler (experimental)
+  
+  -- Override AstroNvim's git branch click handler (AstroNvim only)
+  -- When true, clicking the branch in the statusline opens the worktree switcher
   override_astronvim_click = false,
 })
 ```
+
+### Configuration Options Explained
+
+- **keymaps**: Define keyboard shortcuts for worktree operations. Set to `false` to disable built-in keymaps.
+  - `switch`: Keymap to open the worktree selector (default: `<leader>gws`)
+  - `create`: Keymap to open the worktree creation UI (default: `<leader>gwc`)
+
+- **auto_remap_buffers**: When switching worktrees, automatically remap open buffers to their corresponding files in the new worktree. For example, if you have `feature-branch/src/main.lua` open and switch to the `main` worktree, the buffer will be remapped to `main/src/main.lua`.
+
+- **notify**: Show notifications using `vim.notify()` when performing worktree operations (switching, creating, errors).
+
+- **enable_statusline**: Enable automatic statusline refresh when switching worktrees. Set this to `true` if you're using the built-in statusline component or want your statusline to update automatically.
+
+- **override_astronvim_click**: For AstroNvim users only. When enabled, clicking on the git branch in the statusline will open the worktree switcher instead of the default AstroNvim git picker. Requires `enable_statusline = true`.
 
 ## Usage
 
@@ -171,16 +251,7 @@ require('worktree').setup({
 
 This will make clicking on the git branch in the statusline open the worktree switcher instead of the default AstroNvim behavior.
 
-#### Custom Statusline
-
-For any statusline plugin or custom statuslines:
-
-```lua
-local statusline_text = require('worktree').statusline.get_statusline_component()
--- Returns a string like " main" with the branch icon
-```
-
-For a complete AstroNvim example, see `examples/astronvim-simple.lua`.
+See the complete example configuration in [examples/lazy-nvim-astronvim.lua](examples/lazy-nvim-astronvim.lua) for a full AstroNvim setup with telescope integration and which-key descriptions.
 
 ### Manual API Usage
 
